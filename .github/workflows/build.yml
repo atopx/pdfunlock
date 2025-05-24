@@ -135,6 +135,9 @@ jobs:
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
           cp target/release/pdfunlock AppDir/usr/bin/
           
+          # 复制图标
+          cp resources/icons/linux/256x256.png AppDir/usr/share/icons/hicolor/256x256/apps/pdfunlock.png
+          
           # 创建.desktop文件
           cat > AppDir/usr/share/applications/pdfunlock.desktop << EOF
           [Desktop Entry]
@@ -172,6 +175,10 @@ jobs:
           assets = [
               ["target/release/pdfunlock", "usr/bin/", "755"],
               ["README.md", "usr/share/doc/pdfunlock/README", "644"],
+              ["resources/icons/linux/32x32.png", "usr/share/icons/hicolor/32x32/apps/pdfunlock.png", "644"],
+              ["resources/icons/linux/64x64.png", "usr/share/icons/hicolor/64x64/apps/pdfunlock.png", "644"],
+              ["resources/icons/linux/128x128.png", "usr/share/icons/hicolor/128x128/apps/pdfunlock.png", "644"],
+              ["resources/icons/linux/256x256.png", "usr/share/icons/hicolor/256x256/apps/pdfunlock.png", "644"],
           ]
           EOF
           
@@ -208,4 +215,4 @@ jobs:
           draft: true
           generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -18,7 +18,12 @@ strip = true
 [package.metadata.bundle]
 name = "PDFUnlock"
 identifier = "io.github.atopx.pdfunlock"
-icon = []
+icon = [
+    "resources/icons/linux/32x32.png",
+    "resources/icons/linux/64x64.png",
+    "resources/icons/linux/128x128.png",
+    "resources/icons/linux/256x256.png",
+]
 version = "0.1.0"
 copyright = "Copyright (c) atopx 2025. All rights reserved."
 category = "Utility"
@@ -27,3 +32,6 @@ long_description = """
 一个简单易用的工具，可以去除PDF文档的复制/编辑/打印等权限限制。
 使用FLTK图形界面，轻量级、高性能。
 """
+
+[package.metadata.bundle.windows]
+icon = ["resources/icons/windows/icon.ico"]
