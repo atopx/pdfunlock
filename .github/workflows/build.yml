@@ -1,0 +1,199 @@
+name: 多平台构建
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: 安装Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+      
+      - name: 安装cargo-bundle
+        run: cargo install cargo-bundle
+      
+      - name: 构建macOS (x86_64)
+        run: |
+          cargo build --release
+          cargo bundle --release
+      
+      - name: 构建macOS (Apple Silicon)
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo bundle --release --target aarch64-apple-darwin
+
+      - name: 创建通用二进制
+        run: |
+          mkdir -p target/universal-apple-darwin/release
+          lipo -create target/release/pdfunlock target/aarch64-apple-darwin/release/pdfunlock -output target/universal-apple-darwin/release/pdfunlock
+      
+      - name: 打包发布文件
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd target/release/bundle/osx
+          zip -r ../../../../PDFUnlock-macos-x86_64.zip PDFUnlock.app
+          cd ../../../../target/aarch64-apple-darwin/release/bundle/osx
+          zip -r ../../../../../PDFUnlock-macos-arm64.zip PDFUnlock.app
+          cd ../../../../../
+          mkdir -p universal-app
+          cp -r target/release/bundle/osx/PDFUnlock.app universal-app/
+          cp target/universal-apple-darwin/release/pdfunlock universal-app/PDFUnlock.app/Contents/MacOS/pdfunlock
+          cd universal-app
+          zip -r ../PDFUnlock-macos-universal.zip PDFUnlock.app
+      
+      - name: 上传构建产物
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-builds
+          path: |
+            PDFUnlock-macos-x86_64.zip
+            PDFUnlock-macos-arm64.zip
+            PDFUnlock-macos-universal.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: 安装Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 安装cargo-wix
+        run: cargo install cargo-wix --version 0.3.3
+      
+      - name: 构建Windows
+        run: cargo build --release
+      
+      - name: 创建Windows安装包
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cargo wix -v
+          mkdir -p release-win
+          copy target\release\pdfunlock.exe release-win\pdfunlock.exe
+          Compress-Archive -Path release-win\* -DestinationPath PDFUnlock-windows.zip
+      
+      - name: 上传构建产物
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-builds
+          path: |
+            PDFUnlock-windows.zip
+            target\wix\*.msi
+
+  build-linux:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: 安装依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libxft-dev libxinerama-dev libxcursor-dev libxrender-dev libxfixes-dev libpango1.0-dev libgl1-mesa-dev libglu1-mesa-dev
+          
+      - name: 安装Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: 构建Linux
+        run: cargo build --release
+      
+      - name: 打包AppImage
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # 准备AppDir结构
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          cp target/release/pdfunlock AppDir/usr/bin/
+          
+          # 创建.desktop文件
+          cat > AppDir/usr/share/applications/pdfunlock.desktop << EOF
+          [Desktop Entry]
+          Name=PDFUnlock
+          Exec=pdfunlock
+          Icon=pdfunlock
+          Type=Application
+          Categories=Utility;
+          EOF
+          
+          # 下载AppImage工具
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          
+          # 创建AppImage
+          ./appimagetool-x86_64.AppImage AppDir PDFUnlock-linux.AppImage
+      
+      - name: 创建Deb包
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # 安装cargo-deb
+          cargo install cargo-deb
+          
+          # 添加cargo-deb配置到Cargo.toml
+          cat >> Cargo.toml << EOF
+          
+          [package.metadata.deb]
+          maintainer = "atopx <atopx@example.com>"
+          copyright = "2025, atopx <atopx@example.com>"
+          license-file = ["LICENSE", "0"]
+          extended-description = "A tool to remove permissions restrictions from PDF files"
+          depends = "$auto, libx11-6, libxinerama1, libxft2, libxext6, libxcursor1, libxrender1, libxfixes3, libcairo2, libpango-1.0-0, libpangocairo-1.0-0"
+          section = "utility"
+          priority = "optional"
+          assets = [
+              ["target/release/pdfunlock", "usr/bin/", "755"],
+              ["README.md", "usr/share/doc/pdfunlock/README", "644"],
+          ]
+          EOF
+          
+          # 创建deb包
+          cargo deb
+      
+      - name: 上传构建产物
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-builds
+          path: |
+            PDFUnlock-linux.AppImage
+            target/debian/*.deb
+
+  create-release:
+    needs: [build-macos, build-windows, build-linux]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载所有构建产物
+        uses: actions/download-artifact@v3
+      
+      - name: 创建发布版本
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            macos-builds/PDFUnlock-macos-x86_64.zip
+            macos-builds/PDFUnlock-macos-arm64.zip
+            macos-builds/PDFUnlock-macos-universal.zip
+            windows-builds/PDFUnlock-windows.zip
+            windows-builds/*.msi
+            linux-builds/PDFUnlock-linux.AppImage
+            linux-builds/*.deb
+          draft: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

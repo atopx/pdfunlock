@@ -1,0 +1,29 @@
+[package]
+name = "pdfunlock"
+version = "0.1.0"
+edition = "2024"
+description = "A tool to remove permissions restrictions from PDF files"
+
+[dependencies]
+mupdf = "0.5.0"
+fltk = { version = "^1.5", features = ["fltk-bundled"] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "z"
+strip = true
+
+[package.metadata.bundle]
+name = "PDFUnlock"
+identifier = "io.github.atopx.pdfunlock"
+icon = []
+version = "0.1.0"
+copyright = "Copyright (c) atopx 2025. All rights reserved."
+category = "Utility"
+short_description = "一个用于去除PDF权限限制的工具"
+long_description = """
+一个简单易用的工具，可以去除PDF文档的复制/编辑/打印等权限限制。
+使用FLTK图形界面，轻量级、高性能。
+"""
