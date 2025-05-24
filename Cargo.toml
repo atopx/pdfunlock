@@ -5,7 +5,7 @@ edition = "2024"
 description = "A tool to remove permissions restrictions from PDF files"
 
 [dependencies]
-mupdf = "0.5.0"
+mupdf = { git = "https://github.com/messense/mupdf-rs.git", tag = "v0.5.0" }
 fltk = { version = "^1.5", features = ["fltk-bundled"] }
 
 [profile.release]

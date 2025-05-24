@@ -346,9 +346,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.12.1"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
 ]
@@ -406,8 +406,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 [[package]]
 name = "mupdf"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a6499267155b9ae03ff8e53c456d0bfff988b2647d62ff1df038f39ebe93a0c"
+source = "git+https://github.com/messense/mupdf-rs.git?tag=v0.5.0#2425c1405b326165b06834dcc1ca859015f92787"
 dependencies = [
  "bitflags 2.9.1",
  "font-kit",
@@ -420,8 +419,7 @@ dependencies = [
 [[package]]
 name = "mupdf-sys"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13e9a0d4e844ab50315d43312f3d62f72c77205b07c8ee21cbd4b52bdc2a9910"
+source = "git+https://github.com/messense/mupdf-rs.git?tag=v0.5.0#2425c1405b326165b06834dcc1ca859015f92787"
 dependencies = [
  "bindgen",
  "cc",
