@@ -67,9 +67,6 @@ jobs:
           choco install -y 7zip
           choco install -y strawberryperl
           choco install -y upx
-          choco install -y fltk
-          choco install -y libjpeg
-          choco install -y libpng
 
       - name: 构建Windows
         run: |
