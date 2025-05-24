@@ -211,7 +211,7 @@ jobs:
             windows-builds/pdfunlock.msi
             linux-builds/PDFUnlock-linux.AppImage
             linux-builds/*.deb
-          draft: true
+          draft: false
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
