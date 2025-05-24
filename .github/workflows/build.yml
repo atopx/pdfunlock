@@ -68,6 +68,15 @@ jobs:
           choco install -y strawberryperl
           choco install -y upx
 
+      - name: 下载缺失字体
+        run: |
+          $fontDir = "target\release\build\mupdf-sys-*\out\build\resources\fonts\droid"
+          $fontPath = "$fontDir\DroidSansFallback.ttf"
+          if (-not (Test-Path $fontPath)) {
+            New-Item -ItemType Directory -Force -Path $fontDir
+            Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ArtifexSoftware/mupdf/master/resources/fonts/droid/DroidSansFallback.ttf" -OutFile $fontPath
+          }
+
       - name: 构建Windows
         run: |
           cargo build --release
