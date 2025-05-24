@@ -3,6 +3,9 @@ name = "pdfunlock"
 version = "0.1.0"
 edition = "2024"
 description = "A tool to remove permissions restrictions from PDF files"
+authors = ["atopx <3940422@qq.com>"]
+license = "MIT"
+repository = "https://github.com/atopx/pdfunlock"
 
 [dependencies]
 mupdf = { git = "https://github.com/messense/mupdf-rs.git", tag = "v0.5.0" }
@@ -34,3 +37,12 @@ long_description = """
 
 [package.metadata.bundle.windows]
 icon = ["resources/icons/windows/icon.ico"]
+
+[package.metadata.wix]
+name = "PDFUnlock"
+license = false
+manufacturer = "atopx"
+product-name = "PDFUnlock"
+product-icon = "resources/icons/windows/icon.ico"
+upgrade-guid = "A5788339-5EC2-44DD-9078-A7941A9512E4"
+path-guid = "4EA94C47-0DB2-4173-9AA1-93A6B463DD4C"

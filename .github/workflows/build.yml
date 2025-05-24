@@ -74,6 +74,10 @@ jobs:
       - name: 创建Windows安装包
         if: startsWith(github.ref, 'refs/tags/')
         run: |
+          # 先初始化 WiX 配置文件
+          cargo wix init
+          # 修改生成的 wix\main.wxs 文件以确保它符合要求
+          # 构建 MSI 安装包
           cargo wix --output target\wix\pdfunlock.msi
           mkdir -p release-win
           copy target\release\pdfunlock.exe release-win\pdfunlock.exe
