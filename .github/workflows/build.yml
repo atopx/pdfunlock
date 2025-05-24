@@ -119,6 +119,7 @@ jobs:
           
           # 复制图标
           cp resources/icons/linux/256x256.png AppDir/usr/share/icons/hicolor/256x256/apps/pdfunlock.png
+          cp resources/icons/linux/256x256.png AppDir/pdfunlock.png
           
           # 创建.desktop文件
           cat > AppDir/usr/share/applications/pdfunlock.desktop << EOF
@@ -129,6 +130,18 @@ jobs:
           Type=Application
           Categories=Utility;
           EOF
+          
+          # 复制.desktop文件到AppDir根目录
+          cp AppDir/usr/share/applications/pdfunlock.desktop AppDir/
+          
+          # 创建AppRun文件
+          cat > AppDir/AppRun << EOF
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "\${0}")")"
+          export PATH="\${HERE}/usr/bin/:\${PATH}"
+          exec "\${HERE}/usr/bin/pdfunlock" "\$@"
+          EOF
+          chmod +x AppDir/AppRun
           
           # 下载AppImage工具
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
