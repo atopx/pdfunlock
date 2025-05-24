@@ -24,7 +24,6 @@ icon = [
     "resources/icons/linux/128x128.png",
     "resources/icons/linux/256x256.png",
 ]
-version = "0.1.0"
 copyright = "Copyright (c) atopx 2025. All rights reserved."
 category = "Utility"
 short_description = "一个用于去除PDF权限限制的工具"
