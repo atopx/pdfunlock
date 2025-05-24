@@ -6,6 +6,8 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
+    paths:
+      - '.github/workflows/build.yml'
 
 jobs:
   build-macos:
@@ -18,39 +20,28 @@ jobs:
       - name: 安装Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
       
       - name: 安装cargo-bundle
         run: cargo install cargo-bundle
       
       - name: 构建macOS (x86_64)
         run: |
-          cargo build --release
-          cargo bundle --release
+          cargo build --release --target x86_64-apple-darwin
+          cargo bundle --release --target x86_64-apple-darwin
       
       - name: 构建macOS (Apple Silicon)
         run: |
           cargo build --release --target aarch64-apple-darwin
           cargo bundle --release --target aarch64-apple-darwin
-
-      - name: 创建通用二进制
-        run: |
-          mkdir -p target/universal-apple-darwin/release
-          lipo -create target/release/pdfunlock target/aarch64-apple-darwin/release/pdfunlock -output target/universal-apple-darwin/release/pdfunlock
       
       - name: 打包发布文件
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          cd target/release/bundle/osx
-          zip -r ../../../../PDFUnlock-macos-x86_64.zip PDFUnlock.app
-          cd ../../../../target/aarch64-apple-darwin/release/bundle/osx
+          cd target/x86_64-apple-darwin/release/bundle/osx
+          zip -r ../../../../../PDFUnlock-macos-x86_64.zip PDFUnlock.app
+          cd ../../../../../target/aarch64-apple-darwin/release/bundle/osx
           zip -r ../../../../../PDFUnlock-macos-arm64.zip PDFUnlock.app
-          cd ../../../../../
-          mkdir -p universal-app
-          cp -r target/release/bundle/osx/PDFUnlock.app universal-app/
-          cp target/universal-apple-darwin/release/pdfunlock universal-app/PDFUnlock.app/Contents/MacOS/pdfunlock
-          cd universal-app
-          zip -r ../PDFUnlock-macos-universal.zip PDFUnlock.app
       
       - name: 上传构建产物
         if: startsWith(github.ref, 'refs/tags/')
@@ -60,7 +51,6 @@ jobs:
           path: |
             PDFUnlock-macos-x86_64.zip
             PDFUnlock-macos-arm64.zip
-            PDFUnlock-macos-universal.zip
 
   build-windows:
     runs-on: windows-latest
@@ -71,19 +61,40 @@ jobs:
       
       - name: 安装Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      
+      - name: 设置Visual Studio环境
+        uses: ilammy/msvc-dev-cmd@v1
+      
+      - name: 安装依赖
+        run: |
+          choco install -y 7zip
+          choco install -y strawberryperl
+          choco install -y upx
+      
+      - name: 设置环境变量
+        run: |
+          echo "LIBCLANG_PATH=$env:VCINSTALLDIR\Tools\LLVM\x64\bin" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "INCLUDE=$env:INCLUDE;$env:WindowsSdkDir\Include\$env:WindowsSDKVersion\ucrt" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "LIB=$env:LIB;$env:WindowsSdkDir\Lib\$env:WindowsSDKVersion\ucrt\x64" | Out-File -FilePath $env:GITHUB_ENV -Append
+      
+      - name: 构建Windows
+        run: |
+          cargo build --release --target x86_64-pc-windows-msvc
+          upx --best --lzma target\x86_64-pc-windows-msvc\release\pdfunlock.exe
+        env:
+          RUSTFLAGS: "-C target-feature=+crt-static"
 
       - name: 安装cargo-wix
         run: cargo install cargo-wix --version 0.3.3
       
-      - name: 构建Windows
-        run: cargo build --release
-      
       - name: 创建Windows安装包
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          cargo wix -v
+          cargo wix --output target\wix\pdfunlock.msi --target x86_64-pc-windows-msvc
           mkdir -p release-win
-          copy target\release\pdfunlock.exe release-win\pdfunlock.exe
+          copy target\x86_64-pc-windows-msvc\release\pdfunlock.exe release-win\pdfunlock.exe
           Compress-Archive -Path release-win\* -DestinationPath PDFUnlock-windows.zip
       
       - name: 上传构建产物
@@ -93,7 +104,7 @@ jobs:
           name: windows-builds
           path: |
             PDFUnlock-windows.zip
-            target\wix\*.msi
+            target\wix\pdfunlock.msi
 
   build-linux:
     runs-on: ubuntu-22.04
@@ -105,13 +116,15 @@ jobs:
       - name: 安装依赖
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libxext-dev libxft-dev libxinerama-dev libxcursor-dev libxrender-dev libxfixes-dev libpango1.0-dev libgl1-mesa-dev libglu1-mesa-dev
+          sudo apt-get install -y libx11-dev libxext-dev libxft-dev libxinerama-dev libxcursor-dev libxrender-dev libxfixes-dev libpango1.0-dev libgl1-mesa-dev libglu1-mesa-dev upx
 
       - name: 安装Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: 构建Linux
-        run: cargo build --release
+        run: |
+          cargo build --release
+          upx --best --lzma target/release/pdfunlock
       
       - name: 打包AppImage
         if: startsWith(github.ref, 'refs/tags/')
@@ -180,7 +193,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 下载所有构建产物
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       
       - name: 创建发布版本
         uses: softprops/action-gh-release@v1
@@ -188,9 +201,8 @@ jobs:
           files: |
             macos-builds/PDFUnlock-macos-x86_64.zip
             macos-builds/PDFUnlock-macos-arm64.zip
-            macos-builds/PDFUnlock-macos-universal.zip
             windows-builds/PDFUnlock-windows.zip
-            windows-builds/*.msi
+            windows-builds/pdfunlock.msi
             linux-builds/PDFUnlock-linux.AppImage
             linux-builds/*.deb
           draft: true
