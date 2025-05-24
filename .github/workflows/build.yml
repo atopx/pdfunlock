@@ -79,6 +79,15 @@ jobs:
           echo "INCLUDE=$env:INCLUDE;$env:WindowsSdkDir\Include\$env:WindowsSDKVersion\ucrt" | Out-File -FilePath $env:GITHUB_ENV -Append
           echo "LIB=$env:LIB;$env:WindowsSdkDir\Lib\$env:WindowsSDKVersion\ucrt\x64" | Out-File -FilePath $env:GITHUB_ENV -Append
       
+      - name: 下载必要的字体文件
+        run: |
+          # 创建临时目录存放字体文件
+          New-Item -Path "resources\fonts\droid" -ItemType Directory -Force
+          # 下载字体文件
+          Invoke-WebRequest -Uri "https://github.com/ArtifexSoftware/mupdf/raw/master/resources/fonts/droid/DroidSansFallback.ttf" -OutFile "resources\fonts\droid\DroidSansFallback.ttf"
+          # 设置环境变量，让 mupdf-sys 构建脚本能找到字体文件
+          echo "MUPDF_FONT_DIR=$($pwd.Path -replace '\\', '/')/resources/fonts" | Out-File -FilePath $env:GITHUB_ENV -Append
+      
       - name: 构建Windows
         run: |
           cargo build --release --target x86_64-pc-windows-msvc
@@ -165,8 +174,8 @@ jobs:
           cat >> Cargo.toml << EOF
           
           [package.metadata.deb]
-          maintainer = "atopx <atopx@example.com>"
-          copyright = "2025, atopx <atopx@example.com>"
+          maintainer = "atopx <3940422@qq.com>"
+          copyright = "2025, atopx <3940422@qq.com>"
           license-file = ["LICENSE", "0"]
           extended-description = "A tool to remove permissions restrictions from PDF files"
           depends = "$auto, libx11-6, libxinerama1, libxft2, libxext6, libxcursor1, libxrender1, libxfixes3, libcairo2, libpango-1.0-0, libpangocairo-1.0-0"
