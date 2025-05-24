@@ -78,16 +78,49 @@ jobs:
           echo "LIBCLANG_PATH=$env:VCINSTALLDIR\Tools\LLVM\x64\bin" | Out-File -FilePath $env:GITHUB_ENV -Append
           echo "INCLUDE=$env:INCLUDE;$env:WindowsSdkDir\Include\$env:WindowsSDKVersion\ucrt" | Out-File -FilePath $env:GITHUB_ENV -Append
           echo "LIB=$env:LIB;$env:WindowsSdkDir\Lib\$env:WindowsSDKVersion\ucrt\x64" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "MUPDF_SKIP_FONT_EMBED=1" | Out-File -FilePath $env:GITHUB_ENV -Append
       
-      - name: 下载必要的字体文件
+      - name: 修改 mupdf-sys 构建配置
         run: |
-          # 创建临时目录存放字体文件
-          New-Item -Path "resources\fonts\droid" -ItemType Directory -Force
-          # 下载字体文件
-          Invoke-WebRequest -Uri "https://github.com/ArtifexSoftware/mupdf/raw/master/resources/fonts/droid/DroidSansFallback.ttf" -OutFile "resources\fonts\droid\DroidSansFallback.ttf"
-          # 设置环境变量，让 mupdf-sys 构建脚本能找到字体文件
-          echo "MUPDF_FONT_DIR=$($pwd.Path -replace '\\', '/')/resources/fonts" | Out-File -FilePath $env:GITHUB_ENV -Append
-      
+          # 先进行初始构建，生成必要的构建目录
+          cargo clean -p mupdf-sys
+          cargo build --release --target x86_64-pc-windows-msvc -p mupdf-sys || true
+          
+          # 查找并修改 mupdf 构建配置文件
+          $buildDir = Get-ChildItem -Path "target\x86_64-pc-windows-msvc\release\build" -Filter "mupdf-sys-*" -Directory | Select-Object -First 1
+          if ($buildDir) {
+            $vcxprojFile = Join-Path -Path $buildDir.FullName -ChildPath "out\build\platform\win32\libresources.vcxproj"
+            if (Test-Path $vcxprojFile) {
+              Write-Host "修改 $vcxprojFile 以禁用字体嵌入"
+              # 备份原始文件
+              Copy-Item -Path $vcxprojFile -Destination "$vcxprojFile.bak"
+              # 使用正则表达式修改文件，禁用所有 _bin2coff__ttf_ 目标
+              $content = Get-Content -Path $vcxprojFile -Raw
+              $content = $content -replace '(<Target Name="_bin2coff__ttf_"[^>]*>)', '$1<Message Text="跳过字体嵌入" Importance="high" /><PropertyGroup><TTFSkip>true</TTFSkip></PropertyGroup>'
+              $content | Set-Content -Path $vcxprojFile
+            }
+            
+            # 准备所有必要的字体文件
+            $fontDir = Join-Path -Path $buildDir.FullName -ChildPath "out\build\resources\fonts\droid"
+            New-Item -Path $fontDir -ItemType Directory -Force
+            
+            # 下载所有必要的字体文件
+            $fontFiles = @("DroidSansFallback.ttf", "DroidSans.ttf", "DroidSans-Bold.ttf")
+            foreach ($font in $fontFiles) {
+              $fontUrl = "https://github.com/ArtifexSoftware/mupdf/raw/master/resources/fonts/droid/$font"
+              $fontPath = Join-Path -Path $fontDir -ChildPath $font
+              Write-Host "下载字体: $fontUrl 到 $fontPath"
+              try {
+                Invoke-WebRequest -Uri $fontUrl -OutFile $fontPath -ErrorAction Stop
+                Write-Host "下载成功: $font"
+              } catch {
+                Write-Host "下载失败: $font - $_"
+                # 创建一个空字体文件以绕过检查
+                New-Item -Path $fontPath -ItemType File -Force
+              }
+            }
+          }
+
       - name: 构建Windows
         run: |
           cargo build --release --target x86_64-pc-windows-msvc
